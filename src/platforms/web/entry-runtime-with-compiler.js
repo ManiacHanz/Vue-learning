@@ -1,101 +1,121 @@
 /* @flow */
 
-import config from 'core/config'
-import { warn, cached } from 'core/util/index'
-import { mark, measure } from 'core/util/perf'
+/*
+  和平台相关的Vue渲染的挂载
+  包括补充$mount方法
+  初始化render, staticRenderFn方法，
+  处理options里的template和render属性
+ */
 
-import Vue from './runtime/index'
-import { query } from './util/index'
-import { compileToFunctions } from './compiler/index'
-import { shouldDecodeNewlines, shouldDecodeNewlinesForHref } from './util/compat'
+import config from "core/config";
+import { warn, cached } from "core/util/index";
+import { mark, measure } from "core/util/perf";
+
+import Vue from "./runtime/index";
+import { query } from "./util/index";
+import { compileToFunctions } from "./compiler/index";
+import {
+  shouldDecodeNewlines,
+  shouldDecodeNewlinesForHref
+} from "./util/compat";
 
 const idToTemplate = cached(id => {
-  const el = query(id)
-  return el && el.innerHTML
-})
+  const el = query(id);
+  return el && el.innerHTML;
+});
 
-const mount = Vue.prototype.$mount
-Vue.prototype.$mount = function (
+// new Vue().$mount()
+// 这里给原来的挂载函数增加一些平台相关的代码
+const mount = Vue.prototype.$mount;
+Vue.prototype.$mount = function(
   el?: string | Element,
   hydrating?: boolean
 ): Component {
-  el = el && query(el)
+  el = el && query(el);
 
   /* istanbul ignore if */
   if (el === document.body || el === document.documentElement) {
-    process.env.NODE_ENV !== 'production' && warn(
-      `Do not mount Vue to <html> or <body> - mount to normal elements instead.`
-    )
-    return this
+    process.env.NODE_ENV !== "production" &&
+      warn(
+        `Do not mount Vue to <html> or <body> - mount to normal elements instead.`
+      );
+    return this;
   }
 
-  const options = this.$options
+  const options = this.$options;
   // resolve template/el and convert to render function
+  // template和render两个参数以render优先
   if (!options.render) {
-    let template = options.template
+    let template = options.template;
     if (template) {
-      if (typeof template === 'string') {
-        if (template.charAt(0) === '#') {
-          template = idToTemplate(template)
+      if (typeof template === "string") {
+        if (template.charAt(0) === "#") {
+          template = idToTemplate(template);
           /* istanbul ignore if */
-          if (process.env.NODE_ENV !== 'production' && !template) {
+          if (process.env.NODE_ENV !== "production" && !template) {
             warn(
               `Template element not found or is empty: ${options.template}`,
               this
-            )
+            );
           }
         }
       } else if (template.nodeType) {
-        template = template.innerHTML
+        template = template.innerHTML;
       } else {
-        if (process.env.NODE_ENV !== 'production') {
-          warn('invalid template option:' + template, this)
+        if (process.env.NODE_ENV !== "production") {
+          warn("invalid template option:" + template, this);
         }
-        return this
+        return this;
       }
     } else if (el) {
-      template = getOuterHTML(el)
+      // document.outerHTML 可以获取字符串形式的模板
+      // 常用来最后转义
+      template = getOuterHTML(el);
     }
     if (template) {
       /* istanbul ignore if */
-      if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
-        mark('compile')
+      if (process.env.NODE_ENV !== "production" && config.performance && mark) {
+        mark("compile");
       }
-
-      const { render, staticRenderFns } = compileToFunctions(template, {
-        outputSourceRange: process.env.NODE_ENV !== 'production',
-        shouldDecodeNewlines,
-        shouldDecodeNewlinesForHref,
-        delimiters: options.delimiters,
-        comments: options.comments
-      }, this)
-      options.render = render
-      options.staticRenderFns = staticRenderFns
+      // 渲染函数入口
+      const { render, staticRenderFns } = compileToFunctions(
+        template,
+        {
+          outputSourceRange: process.env.NODE_ENV !== "production",
+          shouldDecodeNewlines,
+          shouldDecodeNewlinesForHref,
+          delimiters: options.delimiters,
+          comments: options.comments
+        },
+        this
+      );
+      options.render = render;
+      options.staticRenderFns = staticRenderFns;
 
       /* istanbul ignore if */
-      if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
-        mark('compile end')
-        measure(`vue ${this._name} compile`, 'compile', 'compile end')
+      if (process.env.NODE_ENV !== "production" && config.performance && mark) {
+        mark("compile end");
+        measure(`vue ${this._name} compile`, "compile", "compile end");
       }
     }
   }
-  return mount.call(this, el, hydrating)
-}
+  return mount.call(this, el, hydrating);
+};
 
 /**
  * Get outerHTML of elements, taking care
  * of SVG elements in IE as well.
  */
-function getOuterHTML (el: Element): string {
+function getOuterHTML(el: Element): string {
   if (el.outerHTML) {
-    return el.outerHTML
+    return el.outerHTML;
   } else {
-    const container = document.createElement('div')
-    container.appendChild(el.cloneNode(true))
-    return container.innerHTML
+    const container = document.createElement("div");
+    container.appendChild(el.cloneNode(true));
+    return container.innerHTML;
   }
 }
 
-Vue.compile = compileToFunctions
+Vue.compile = compileToFunctions;
 
-export default Vue
+export default Vue;
